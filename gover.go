@@ -61,7 +61,6 @@ func (g *Gover) Run() error {
 
 	//set deadline
 	g.Context, g.Cancel = context.WithDeadline(g.Context, g.Deadline)
-	defer g.Cancel()
 
 	return g.runWithTimeout()
 }

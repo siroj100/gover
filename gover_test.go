@@ -52,14 +52,12 @@ func TestRetryFunctionality(t *testing.T) {
 	assert.Error(t, err)
 
 	initNum = 0
-	gover, err = New(time.Hour, testFunc)
 	gover.MaxRetry = 3
 	err = gover.Run()
 	assert.NoError(t, err)
 
 	//test the retry interval
 	initNum = 0
-	gover, err = New(time.Hour, testFunc)
 	gover.MaxRetry = 3
 	gover.RetryInterval = time.Millisecond * 100
 	timeNow := time.Now()
@@ -76,32 +74,8 @@ func TestRetryFunctionality(t *testing.T) {
 
 	//test the no retry conditions
 	initNum = 0
-	gover, err = New(time.Hour, testFunc)
 	gover.MaxRetry = 3
 	gover.NoRetryConditions = []string{"should"}
 	err = gover.Run()
 	assert.Error(t, err)
-
-	/*//gradually reduce the func duration
-	initial := 5200
-
-	testFunc := func(c context.Context) (context.Context, error){
-		dur, _ := time.ParseDuration(fmt.Sprintf("%dms", initial))
-		initial = initial - 500
-		time.Sleep(dur)
-		return c, nil
-	}
-
-	//set timeout duration into 3s
-	//max retry to 5
-	gover, err := New(time.Hour, testFunc)
-	assert.NoError(t, err)
-	gover.MaxRetry = 5
-	gover.JobTimeout = time.Second * 3
-	err = gover.Run()
-	assert.NoError(t, err)
-	//initial supposed to be successful when it hit 2700
-	assert.Equal(t, 2700, initial)
-	*/
-
 }
