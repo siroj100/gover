@@ -9,7 +9,9 @@ import (
 
 type Gover struct {
 	//the function that's supposed to be run
-	//input is only a singular interface{}
+	//input and output contain context here
+	//instead of running interface{} context can also serve as input and output variables
+	//only have to be cautious not to get mistaken by ambiguous key
 	Job func(context.Context) (context.Context, error)
 	//context with its cancel function
 	Context context.Context
@@ -26,11 +28,11 @@ type Gover struct {
 	//if empty then every error will be retried
 	NoRetryConditions []string
 	//specify the retry interval
-	//if empty then it will be done immediately
-	RetryInterval time.Duration
-	//specify the timeout for every Job
-	//if empty then it will wait indefinitely
-	JobTimeout time.Duration
+	//this is a string that supposed to be parsed into time.Duration
+	//if it fails to parse then the timeout for retry will be set into a very short duration
+	RetryInterval string
+	//specify the timeout for each jobs
+	JobInterval string
 }
 
 func New(timeout time.Duration, job func(context.Context) (context.Context, error)) (*Gover, error) {
@@ -72,8 +74,16 @@ func (g *Gover) runWithTimeout() error {
 	retryChan := make(chan int, 1)
 	errorChan := make(chan error, 1)
 
-	doTheJob := func(retryNum int) {
+	doTheJob := func(retryNum int, child context.Context) {
+		//update the parent context everytime the job is done
 		g.Context, err = g.Job(g.Context)
+
+		//check whether the child context is already done or not
+		//if it is error then do nothing, just return
+		if child.Err() != nil {
+			return
+		}
+
 		if err != nil {
 			//if error then this might should be retried
 			//first check whether the error code is in no retry list
@@ -87,7 +97,7 @@ func (g *Gover) runWithTimeout() error {
 			//then check if the retry number already exceeded
 			//if that's the case then just return
 			if retryNum >= g.MaxRetry {
-				errorChan <- fmt.Errorf("Maxmium number of retry exceeded")
+				errorChan <- fmt.Errorf("Maximum number of retry exceeded")
 				return
 			}
 
@@ -101,11 +111,24 @@ func (g *Gover) runWithTimeout() error {
 
 	//do the job until it's done or expired
 	for {
-		//create child context
-		//this is needed to set the retry interval
-		childCtx, _ := context.WithTimeout(g.Context, g.RetryInterval)
+		//set retry interval here
+		//default value is 1ms only, change only if parsing duration returns no error
+		retryInterval := time.Millisecond
+		if rt, err := time.ParseDuration(g.RetryInterval); err == nil {
+			retryInterval = rt
+		}
 
-		go doTheJob(currentRetry)
+		//create child context
+		//if jobinterval is stated then use different interval
+		//otherwise derivate it from the parent
+		var childCtx context.Context
+		if jobInterval, err := time.ParseDuration(g.JobInterval); err != nil {
+			childCtx, _ = context.WithCancel(g.Context)
+		} else {
+			childCtx, _ = context.WithTimeout(g.Context, jobInterval)
+		}
+
+		go doTheJob(currentRetry, childCtx)
 		select {
 		case <-g.Context.Done():
 			//in this case the context is already cancelled
@@ -119,8 +142,18 @@ func (g *Gover) runWithTimeout() error {
 			//update the currentRetry with 1 + retryNum
 			currentRetry = retryNum + 1
 
-			//block until child is done
-			<-childCtx.Done()
+			//sleep for the set interval before retrying
+			time.Sleep(retryInterval)
+			continue
+		case <-childCtx.Done():
+			//in this case child is timed out
+			//return error if max retry is exceeded
+			if currentRetry >= g.MaxRetry {
+				return fmt.Errorf("Maximum number of retry exceeded")
+			}
+			//otherwise retry
+			currentRetry += 1
+			time.Sleep(retryInterval)
 			continue
 		}
 	}
