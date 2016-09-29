@@ -28,9 +28,11 @@ type Gotermin struct {
 	isActive bool
 	//the time location
 	timeLocation *time.Location
+	//container for custom interval
+	customInterval time.Duration
 }
 
-//this should setup an gotermin, which will run in 1 hour interval
+//this should setup a gotermin, which will run in 1 hour interval
 //input minute decide when (minute) the schedule should be started (number between 00-60)
 //if input minute is an empty string, start the job immediately
 //also determine the time location to make sure it's running properly
@@ -53,6 +55,33 @@ func NewHourly(job func(context.Context), minute string, loc *time.Location) (*G
 		startingPoint:    minute,
 		timeLocation:     loc,
 	}, nil
+}
+
+//this function will set the schedule interval at will
+//however the starting point can't be set (i.e. the job will start immediately)
+//and the custom interval can't be less than 1 second
+func NewCustomInterval(job func(context.Context), interval time.Duration, loc *time.Location) (*Gotermin, error) {
+	//return error if location is nil
+	if loc == nil {
+		return nil, fmt.Errorf("Please input a valid time location")
+	}
+
+	//it should not less than 1 second
+	if interval.Seconds() < float64(1) {
+		return nil, fmt.Errorf("Please insert duration greater than 1 second")
+	}
+
+	//set the interval category into custom
+	//set the custom interval into desired interval
+	return &Gotermin{
+		Job:              job,
+		quit:             make(chan interface{}, 1),
+		intervalCategory: "custom",
+		startingPoint:    "",
+		timeLocation:     loc,
+		customInterval:   interval,
+	}, nil
+
 }
 
 //stop the currently running go termin
@@ -86,6 +115,9 @@ func (gt *Gotermin) Start() error {
 		}
 		//set the interval into 1 hour exactly
 		jobInterval = time.Hour
+	case "custom":
+		//set the job interval according to custom interval
+		jobInterval = gt.customInterval
 	default:
 		return fmt.Errorf("Current category is invalid: %s", gt.intervalCategory)
 	}

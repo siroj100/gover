@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -76,4 +77,39 @@ func TestStartAndStopJob(t *testing.T) {
 
 	assert.Equal(t, false, result.isActive)
 	assert.Equal(t, "foo", <-c)
+}
+
+func TestCustomInterval(t *testing.T) {
+	initial := int64(0)
+	job := func(ctx context.Context) {
+		atomic.AddInt64(&initial, 1)
+	}
+
+	jkt, _ := time.LoadLocation("Asia/Jakarta")
+	customInterval := time.Millisecond
+
+	_, err := NewCustomInterval(job, customInterval, jkt)
+	assert.Error(t, err)
+
+	customInterval = time.Second
+
+	result, err := NewCustomInterval(job, customInterval, jkt)
+	assert.NoError(t, err)
+	assert.Equal(t, "custom", result.intervalCategory)
+	assert.Equal(t, "", result.startingPoint)
+	assert.Equal(t, jkt, result.timeLocation)
+	assert.Equal(t, customInterval, result.customInterval)
+
+	err = result.Start()
+	assert.NoError(t, err)
+	//sleep for 3 seconds
+	//then the initial should be 3 afterwards
+	sleepTime := int64(3)
+
+	sleepDur, _ := time.ParseDuration(fmt.Sprintf("%ds", sleepTime))
+	time.Sleep(sleepDur)
+
+	err = result.Stop()
+	assert.NoError(t, err)
+	assert.Equal(t, sleepTime, initial)
 }
