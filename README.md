@@ -1,23 +1,25 @@
 ##GOVER (only works for go version 1.7 and above)
-Current features:
-1. Cronjob like scheduler
-2. Customizeable auto retry function with timeout
+#Current features:
+#1. Cronjob like scheduler
+#2. Customizeable auto retry function with timeout
 
 ##Usage
 
 ##1. Gotermin
+
+#the job function is a func(context.Context)
+#the input context is only to handle condition where 1 interval has passed
+#it's perfectly OK to ignore it in function
 ```
-//the job function is a func(context.Context)
-//the input context is only to handle condition where 1 interval has passed
-//it's perfectly OK to ignore it in function
-//e.g.
 job := func(ctx context.Context){
 	fmt.Println("foo")
 }
+```
 
-//1. hourly scheduler
-//this function will run on hourly basis
-//time location is required to make sure it's running in the correct timezone
+#1. hourly scheduler
+#this function will run on hourly basis
+#time location is required to make sure it's running in the correct timezone
+```
 jkt, _ := time.LoadLocation("Asia/Jakarta")
 hourly, _ := gover.NewHourly(job, "30", jkt)
 //"30" means that it will run every minute 30 every hour
@@ -30,18 +32,22 @@ if err := hourly.Start(); err != nil{
 }
 //stop the scheduler at need
 hourly.Stop()
+```
 
-//2. daily scheduler
-//in principal the same with hourly
-//only the second parameter should the hour and minute in format hhmm
-//use "" to run it immediately 
+#2. daily scheduler
+#in principal the same with hourly
+#only the second parameter should the hour and minute in format hhmm
+#use "" to run it immediately 
+```
 daily, _ := gover.NewDaily(job, "0530", jkt)
 if err := daily.Start(); err != nil{
 	panic(err)
 }
+```
 
-//3.custom interval
-//the interval this time is customizeable (it will run immediately every now and then)
+#3.custom interval
+#the interval this time is customizeable (it will run immediately every now and then)
+```
 interval := time.Second * 30
 customInterval, _ := gover.NewCustomInterval(job, interval, jkt)
 if err := customInterval.Start(); err != nil{
@@ -53,15 +59,16 @@ if err := customInterval.Start(); err != nil{
 
 ##2. Gover
 ```
-//create new gover struct
-//the inputs are: 
-//1. time.Duration as the timeout duration for the job
-timeout := time.Second * 10
+#create new gover struct
+#the inputs are: 
+#1. time.Duration as the timeout duration for the job
+#2. func(context.Context) (context.Context, error)
+#job is any function with input context.Context and output (context.Context, error)
+#be careful at handling the context key and value since they are both interface{}
+#the purpose is to generalize all fuction, e.g.
 
-//2. func(context.Context) (context.Context, error)
-//job is any function with input context.Context and output (context.Context, error)
-//be careful at handling the context key and value since they are both interface{}
-//the purpose is to generalize all fuction, e.g.
+```
+timeout := time.Second * 10
 job := func(ctx context.Context) (context.Context, error){
 	//get input from context
 	input := ctx.Value("input").(int)
@@ -75,6 +82,7 @@ gover, err := gover.New(timeout, job)
 gover.Context = context.WithValue(context.Background(), "input", 1)
 
 //set optional parameters
+
 //how many times this function will be done again if error is returned
 gover.MaxRetry = 3 
 //keyword for error message that's not supposed to be retried
