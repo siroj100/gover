@@ -1,24 +1,22 @@
 ##GOVER (only works for go version 1.7 and above)
-#Current features:
-#1. Cronjob like scheduler
-#2. Customizeable auto retry function with timeout
+###Current features:
+- Cronjob like scheduler
+- Customizeable auto retry function with timeout
 
 ##Usage
 
 ##1. Gotermin
 
-#the job function is a func(context.Context)
-#the input context is only to handle condition where 1 interval has passed
-#it's perfectly OK to ignore it in function
+###the job function is a func(context.Context)
+###The input context is only to handle condition where 1 interval has passed. It's perfectly OK to ignore it in function
 ```
 job := func(ctx context.Context){
 	fmt.Println("foo")
 }
 ```
 
-#1. hourly scheduler
-#this function will run on hourly basis
-#time location is required to make sure it's running in the correct timezone
+##1.1 hourly scheduler
+###this function will run on hourly basis. time location is required to make sure it's running in the correct timezone
 ```
 jkt, _ := time.LoadLocation("Asia/Jakarta")
 hourly, _ := gover.NewHourly(job, "30", jkt)
@@ -34,10 +32,8 @@ if err := hourly.Start(); err != nil{
 hourly.Stop()
 ```
 
-#2. daily scheduler
-#in principal the same with hourly
-#only the second parameter should the hour and minute in format hhmm
-#use "" to run it immediately 
+##1.2 daily scheduler
+###in principal the same with hourly. Only the second parameter should the hour and minute in format hhmm (use empty string "" to run it immediately) 
 ```
 daily, _ := gover.NewDaily(job, "0530", jkt)
 if err := daily.Start(); err != nil{
@@ -45,8 +41,8 @@ if err := daily.Start(); err != nil{
 }
 ```
 
-#3.custom interval
-#the interval this time is customizeable (it will run immediately every now and then)
+##1.3 custom interval
+###the interval this time is customizeable (it will run immediately every now and then)
 ```
 interval := time.Second * 30
 customInterval, _ := gover.NewCustomInterval(job, interval, jkt)
@@ -58,14 +54,11 @@ if err := customInterval.Start(); err != nil{
 
 
 ##2. Gover
-```
-#create new gover struct
-#the inputs are: 
-#1. time.Duration as the timeout duration for the job
-#2. func(context.Context) (context.Context, error)
-#job is any function with input context.Context and output (context.Context, error)
-#be careful at handling the context key and value since they are both interface{}
-#the purpose is to generalize all fuction, e.g.
+
+###create new gover struct. The inputs are: 
+- time.Duration as the timeout duration for the job
+- func(context.Context) (context.Context, error)
+###job is any function with input context.Context and output (context.Context, error). Be careful at handling the context key and value since they are both interface{}. The purpose is to generalize all fuction, e.g.
 
 ```
 timeout := time.Second * 10
