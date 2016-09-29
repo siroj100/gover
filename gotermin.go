@@ -57,6 +57,31 @@ func NewHourly(job func(context.Context), minute string, loc *time.Location) (*G
 	}, nil
 }
 
+//this function will schedule the job in daily interval
+//input hour will decide when the schedule should be started
+//the hour should be in form hhmm, if it's not parseable then return error
+//also determine the time location to make sure it's running properly
+func NewDaily(job func(context.Context), hour string, loc *time.Location) (*Gotermin, error) {
+	//return error if hour is not a valid hour string
+	//add exception for empty string (the schedule will run immediately)
+	if _, err := time.Parse("1504", hour); err != nil && hour != "" {
+		return nil, fmt.Errorf("Please input correct time in format hhmm")
+	}
+
+	//also return error if time location is nil
+	if loc == nil {
+		return nil, fmt.Errorf("Please input a valid time location")
+	}
+
+	return &Gotermin{
+		Job:              job,
+		quit:             make(chan interface{}, 1),
+		intervalCategory: "daily",
+		startingPoint:    hour,
+		timeLocation:     loc,
+	}, nil
+}
+
 //this function will set the schedule interval at will
 //however the starting point can't be set (i.e. the job will start immediately)
 //and the custom interval can't be less than 1 second
@@ -109,12 +134,11 @@ func (gt *Gotermin) Start() error {
 	var jobInterval time.Duration
 	switch gt.intervalCategory {
 	case "hourly":
-		//check whether starting point is minute parseable
-		if _, err := time.Parse("04", gt.startingPoint); err != nil && gt.startingPoint != "" {
-			return fmt.Errorf("Invalid starting point for hourly schedule")
-		}
-		//set the interval into 1 hour exactly
+		//set the interval into 1 hour
 		jobInterval = time.Hour
+	case "daily":
+		//set the interval into 24 hours
+		jobInterval = time.Hour * 24
 	case "custom":
 		//set the job interval according to custom interval
 		jobInterval = gt.customInterval
@@ -183,6 +207,11 @@ func (gt *Gotermin) durationUntilFirst() (time.Duration, error) {
 	timeNow := time.Now().In(gt.timeLocation)
 	switch gt.intervalCategory {
 	case "hourly":
+		//check whether starting point is minute parseable
+		if _, err := time.Parse("04", gt.startingPoint); err != nil {
+			return result, fmt.Errorf("Invalid starting point for hourly schedule")
+		}
+
 		//this means that we have to wait for 0-59 minutes
 		//to be precise, parse the value in seconds
 		currentMinutes, currentSeconds := timeNow.Format("04"), timeNow.Format("05")
@@ -201,6 +230,32 @@ func (gt *Gotermin) durationUntilFirst() (time.Duration, error) {
 
 		//now we can calculate the duration in seconds
 		durFloat := math.Abs(totalSec - mins*60)
+
+		//parse the duration into time.Duration
+		result, err = time.ParseDuration(fmt.Sprintf("%.0fs", durFloat))
+	case "daily":
+		//check whether starting point is into hour parseable
+		if _, err := time.Parse("1504", gt.startingPoint); err != nil {
+			return result, fmt.Errorf("Invalid starting point for daily schedule")
+		}
+
+		//return how many seconds we have to wait
+		currentHours, currentMinutes, currentSeconds := timeNow.Format("15"), timeNow.Format("04"), timeNow.Format("05")
+		curHour, _ := strconv.ParseFloat(currentHours, 64)
+		curMin, _ := strconv.ParseFloat(currentMinutes, 64)
+		curSec, _ := strconv.ParseFloat(currentSeconds, 64)
+		//calculate the total seconds passed
+		totalSec := curHour*60*60 + curMin*60 + curSec
+
+		//parse the starting point
+		//return error if failed
+		timeDur, err := time.ParseDuration(fmt.Sprintf("%sh%sm", gt.startingPoint[:2], gt.startingPoint[2:]))
+		if err != nil {
+			return result, err
+		}
+
+		//calculate the wait duration in seconds
+		durFloat := math.Abs(totalSec - timeDur.Seconds())
 
 		//parse the duration into time.Duration
 		result, err = time.ParseDuration(fmt.Sprintf("%.0fs", durFloat))

@@ -33,6 +33,30 @@ func TestCreateNewHourly(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestCreateNewDaily(t *testing.T) {
+	job := func(ctx context.Context) {
+		fmt.Println("foo")
+	}
+
+	invalidHour := "foo"
+	jkt, _ := time.LoadLocation("Asia/Jakarta")
+
+	_, err := NewDaily(job, invalidHour, jkt)
+	assert.Error(t, err)
+
+	_, err = NewDaily(job, "", jkt)
+	assert.NoError(t, err)
+
+	validHour := "0530"
+	result, err := NewDaily(job, validHour, jkt)
+	assert.NoError(t, err)
+	assert.Equal(t, validHour, result.startingPoint)
+	assert.Equal(t, "daily", result.intervalCategory)
+
+	_, err = NewDaily(job, validHour, nil)
+	assert.Error(t, err)
+}
+
 func TestCreateDurationUntilFirstJob(t *testing.T) {
 	job := func(ctx context.Context) {
 		fmt.Println("foo")
@@ -43,8 +67,21 @@ func TestCreateDurationUntilFirstJob(t *testing.T) {
 	dur, err := result.durationUntilFirst()
 	assert.NoError(t, err)
 	seconds := dur.Seconds()
-
 	assert.NotEqual(t, float64(0), seconds)
+	result.startingPoint = "0530"
+	_, err = result.durationUntilFirst()
+	assert.Error(t, err)
+
+	result, _ = NewDaily(job, "0530", jkt)
+
+	dur, err = result.durationUntilFirst()
+	assert.NoError(t, err)
+	seconds = dur.Seconds()
+	assert.NotEqual(t, float64(0), seconds)
+
+	result.startingPoint = "30"
+	_, err = result.durationUntilFirst()
+	assert.Error(t, err)
 }
 
 func TestStartAndStopJob(t *testing.T) {
@@ -81,8 +118,10 @@ func TestStartAndStopJob(t *testing.T) {
 
 func TestCustomInterval(t *testing.T) {
 	initial := int64(0)
+	fmt.Println("initial number", initial)
 	job := func(ctx context.Context) {
 		atomic.AddInt64(&initial, 1)
+		fmt.Println("current number: ", initial)
 	}
 
 	jkt, _ := time.LoadLocation("Asia/Jakarta")
