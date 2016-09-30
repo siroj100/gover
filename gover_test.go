@@ -31,6 +31,10 @@ func TestGover(t *testing.T) {
 
 	gover, err := New(time.Second*5, cat.setName)
 	assert.NoError(t, err)
+	err = gover.Run()
+	assert.Error(t, err)
+	assert.Equal(t, "", cat.Name)
+
 	gover.Context = ctx
 	err = gover.Run()
 	assert.NoError(t, err)
