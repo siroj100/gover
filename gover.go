@@ -10,9 +10,9 @@ import (
 type Gover struct {
 	//the function that's supposed to be run
 	//input and output contain context here
-	//instead of running interface{} context can also serve as input and output variables
+	//instead of running interface{} context can also serve as input variable
 	//only have to be cautious not to get mistaken by ambiguous key
-	Job func(context.Context) (context.Context, error)
+	Job func(context.Context) error
 	//context with its cancel function
 	Context context.Context
 	Cancel  context.CancelFunc
@@ -35,7 +35,7 @@ type Gover struct {
 	JobInterval string
 }
 
-func New(timeout time.Duration, job func(context.Context) (context.Context, error)) (*Gover, error) {
+func New(timeout time.Duration, job func(context.Context) error) (*Gover, error) {
 	//timeout can't be lower than 1ns
 	if timeout.Nanoseconds() == int64(0) {
 		return nil, fmt.Errorf("Timeout %.0fs is too short", timeout.Seconds())
@@ -75,8 +75,7 @@ func (g *Gover) runWithTimeout() error {
 	errorChan := make(chan error, 1)
 
 	doTheJob := func(retryNum int, child context.Context) {
-		//update the parent context everytime the job is done
-		g.Context, err = g.Job(g.Context)
+		err = g.Job(g.Context)
 
 		//check whether the child context is already done or not
 		//if it is error then do nothing, just return

@@ -57,45 +57,55 @@ if err := customInterval.Start(); err != nil{
 
 ###create new gover struct. The inputs are: 
 - time.Duration as the timeout duration for the job
-- func(context.Context) (context.Context, error)
-Job is any function with input context.Context and output (context.Context, error).  
-Be careful at handling the context key and value since they are both interface{}. The purpose is to generalize all fuction, e.g.
+- func(context.Context) error
+Job is any function with input context.Context and error output.  
+Be careful at handling the context key and value since they are both interface{}.
 
 ```
-timeout := time.Second * 10
-job := func(ctx context.Context) (context.Context, error){
-	//get input from context
-	input := ctx.Value("input").(int)
-	
-	//set output in context
-	return context.WithValue(ctx, "output", input + 1), nil
+type Animal struct{
+	Name
 }
 
-gover, err := gover.New(timeout, job)
+func (a *Animal) setName(c context.Context) error {
+	if c.Value("name") != nil {
+		a.Name = c.Value("name").(string)
+		return nil
+	}
+
+	return fmt.Errorf("Invalid name context")
+}
+
+timeout := time.Second * 10
+
+var cat Animal
+gover, err := gover.New(timeout, cat.setName)
 //set input 
-gover.Context = context.WithValue(context.Background(), "input", 1)
+gover.Context = context.WithValue(context.Background(), "name", "Mr. Meowingston")
+```
 
-//set optional parameters
-
+###set optional parameters
+```
 //how many times this function will be done again if error is returned
 gover.MaxRetry = 3 
+
 //keyword for error message that's not supposed to be retried
 gover.NoRetryConditions = []string{"foo"}
+
 //interval between each retrial
 //if not specified or not parseable into time.Duration it will be retried immediately
 gover.RetryInterval = "100ms"
+
 //timeout for each retry 
 //if not specified or not parseable into time.Duration it will not have a timeout 
 gover.JobInterval = "1s"
-
-//run the function
-//read the output from context
-var output int
-if err := gover.Run(); err != nil{
-	output = gover.Context.Value("output").(int)
+```
+###run the function
+```
+if err := gover.Run(); err == nil{
+	fmt.Println(cat.Name)
 }
-//this should print 2
-fmt.Println(output)
+
+//this should print "Mr. Meowingston"
 
 ```
 

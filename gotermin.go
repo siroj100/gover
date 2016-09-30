@@ -1,6 +1,6 @@
 //GoTermin is in principal a cronjob like scheduler
 //it will do its assigned on a certain schedule
-//the job function in this case is a simple func() without returning anything
+//the job function in this case is a simple func(context.Context) without returning anything
 package gover
 
 import (

@@ -8,41 +8,44 @@ import (
 	"time"
 )
 
-func TestGover(t *testing.T) {
-	var foo, foo2 string
+type Animal struct {
+	Name string
+}
 
-	ctx := context.WithValue(context.Background(), "foo", "bar")
-	ctx = context.WithValue(ctx, "foo2", "bar2")
-
-	testFunc := func(c context.Context) (context.Context, error) {
-		foo = c.Value("foo").(string)
-		foo2 = c.Value("foo2").(string)
-		return context.WithValue(c, "foo3", "bar3"), nil
+func (a *Animal) setName(c context.Context) error {
+	if c.Value("name") != nil {
+		a.Name = c.Value("name").(string)
+		return nil
 	}
 
+	return fmt.Errorf("Invalid name context")
+}
+
+func TestGover(t *testing.T) {
+	ctx := context.WithValue(context.Background(), "name", "Mr. Meowingston")
+	var cat Animal
+
 	var timeNull time.Duration
-	_, err := New(timeNull, testFunc)
+	_, err := New(timeNull, cat.setName)
 	assert.Error(t, err)
 
-	gover, err := New(time.Second*5, testFunc)
+	gover, err := New(time.Second*5, cat.setName)
 	assert.NoError(t, err)
 	gover.Context = ctx
 	err = gover.Run()
 	assert.NoError(t, err)
-	assert.Equal(t, "bar", foo)
-	assert.Equal(t, "bar2", foo2)
-	assert.Equal(t, "bar3", gover.Context.Value("foo3"))
+	assert.Equal(t, "Mr. Meowingston", cat.Name)
 }
 
 func TestRetryFunctionality(t *testing.T) {
 	//test the max retry functionality
 	initNum := 0
-	testFunc := func(c context.Context) (context.Context, error) {
+	testFunc := func(c context.Context) error {
 		if initNum < 3 {
 			initNum += 1
-			return c, fmt.Errorf("should be at least 3")
+			return fmt.Errorf("should be at least 3")
 		}
-		return c, nil
+		return nil
 	}
 
 	gover, err := New(time.Hour, testFunc)
@@ -96,12 +99,12 @@ func TestRetryFunctionality(t *testing.T) {
 	//initial timeout is 520ms, decrement 100ms each time it's called
 	initialTO := 520
 	tryNum := 0
-	timeoutFunc := func(ctx context.Context) (context.Context, error) {
+	timeoutFunc := func(ctx context.Context) error {
 		tryNum += 1
 		to, _ := time.ParseDuration(fmt.Sprintf("%dms", initialTO))
 		initialTO = initialTO - 100
 		time.Sleep(to)
-		return ctx, err
+		return err
 	}
 
 	gover, err = New(time.Hour, timeoutFunc)
