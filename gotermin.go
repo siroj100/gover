@@ -95,6 +95,17 @@ func (ct *CrontabMinE) registerNew(cat, key string, job func(context.Context), i
 	return nil
 }
 
+//start all cronjobs
+//return error if
+func (ct *CrontabMinE) StartAll() error {
+	for _, gotermin := range ct.cronjobs {
+		if err := gotermin.Start(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type Gotermin struct {
 	//the job that's supposed to be done
 	//it will run on separate thread
