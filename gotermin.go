@@ -165,7 +165,17 @@ func (gt *Gotermin) start(jobInterval, sleepDuration time.Duration) {
 	gt.isActive = true
 
 	//then sleep for the assigned sleep duration
-	time.Sleep(sleepDuration)
+	wakeUp := time.After(sleepDuration)
+
+	//return if signal quit is received
+	select {
+	case <-gt.quit:
+		//return and set the status into inactive
+		gt.isActive = false
+		return
+	case <-wakeUp:
+		//continue to start the job periodically
+	}
 
 	//after awoken from the slumber
 	//start an infinite loop with the job interval
