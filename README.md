@@ -124,12 +124,12 @@ Be careful at handling the context key and value since they are both interface{}
 
 ```
 type Animal struct{
-	Name
+	Name string
 }
 
 func (a *Animal) setName(c context.Context) error {
-	if c.Value("name") != nil {
-		a.Name = c.Value("name").(string)
+	if name, ok := c.Value("name").(string); ok{
+		a.Name = name
 		return nil
 	}
 
