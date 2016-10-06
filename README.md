@@ -139,30 +139,30 @@ func (a *Animal) setName(c context.Context) error {
 timeout := time.Second * 10
 
 var cat Animal
-gover, err := gover.New(timeout, cat.setName)
+gvr, err := gover.New(timeout, cat.setName)
 //set input 
-gover.Context = context.WithValue(context.Background(), "name", "Mr. Meowingston")
+gvr.Context = context.WithValue(context.Background(), "name", "Mr. Meowingston")
 ```
 
 ###set optional parameters
 ```
 //how many times this function will be done again if error is returned
-gover.MaxRetry = 3 
+gvr.MaxRetry = 3 
 
 //keyword for error message that's not supposed to be retried
-gover.NoRetryConditions = []string{"foo"}
+gvr.NoRetryConditions = []string{"foo"}
 
 //interval between each retrial
 //if not specified or not parseable into time.Duration it will be retried immediately
-gover.RetryInterval = "100ms"
+gvr.RetryInterval = "100ms"
 
 //timeout for each retry 
 //if not specified or not parseable into time.Duration it will not have a timeout 
-gover.JobInterval = "1s"
+gvr.JobInterval = "1s"
 ```
 ###run the function
 ```
-if err := gover.Run(); err == nil{
+if err := gvr.Run(); err == nil{
 	fmt.Println(cat.Name)
 }
 
