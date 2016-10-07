@@ -5,7 +5,7 @@
 
 ##Usage
 
-##1. Gotermin
+##1. "Cron job"
 
 The job function is a func(context.Context)  
 The input context is only to handle condition where 1 interval has passed. It's perfectly OK to ignore it in function
@@ -26,10 +26,13 @@ This function will run on hourly basis. time location is required to make sure i
 moritz := Cat{"Moritz", "Rawrr"}
 jkt, _ := time.LoadLocation("Asia/Jakarta")
 hourly, _ := gover.NewHourly(moritz.meowing, "30", jkt)
-//"30" means that it will run every minute 30 every hour
-//if not parseable then it will return an error
-//exception is empty string "", which means it will run immediately 
+```
 
+"30" means that it will run every minute 30 every hour
+if not parseable then it will return an error
+exception is empty string "", which means it will run immediately 
+
+```
 //run the scheduler
 if err := hourly.Start(); err != nil{
 	panic(err)
@@ -39,7 +42,8 @@ hourly.Stop()
 ```
 
 ###1.2 daily scheduler
-In principal the same with hourly. Only the second parameter should the hour and minute in format hhmm (use empty string "" to run it immediately) 
+In principal the same with hourly. Only the second parameter should the hour and minute in format hhmm (use empty string "" to run it immediately)  
+So basically Moritz will meow once a day on 0530 WIB
 ```
 daily, _ := gover.NewDaily(moritz.meowing, "0530", jkt)
 if err := daily.Start(); err != nil{
@@ -48,7 +52,7 @@ if err := daily.Start(); err != nil{
 ```
 
 ###1.3 custom interval
-The interval this time is customizeable (it will run immediately every now and then)
+The interval this time is customizeable (it will run immediately in a certain interval)
 ```
 interval := time.Second * 30
 customInterval, _ := gover.NewCustomInterval(moritz.meowing, interval, jkt)
@@ -59,7 +63,7 @@ if err := customInterval.Start(); err != nil{
 ```
 
 ##2. CrontabMinE
-This is actually works as containers for gotermins  
+This is actually works as containers for all cronjobs  
 Also has method Print() to return current conditions as string  
 
 Example: 
@@ -76,12 +80,12 @@ addie := Cat{"Addison", "Meow"}
 err := crontab.RegisterNewHourly("addie", addie.meowing, "30")
 
 //register new daily
-bill := Cat{"William", "Zzzz"}
-err = crontab.RegisterNewDaily("bill", bill.meowing, "0300")
+duwey := Cat{"Duwey", "Zzzz"}
+err = crontab.RegisterNewDaily("duwey", duwey.meowing, "0300")
 
 //register new custom interval
-jane := Cat{"Jennifer", "Nyan"}
-err = crontab.RegisterNewCustomInterval("jane", jane.meowing, time.Second * 10)
+rog := Cat{"Roger", "Nyan"}
+err = crontab.RegisterNewCustomInterval("roger", rog.meowing, time.Second * 10)
 ```
 
 Each one can be started/stopped all at once or by key
@@ -93,12 +97,12 @@ crontab.Start("addie")
 crontab.StartAll()
 
 //stop by key
-crontab.Stop("jane")
+crontab.Stop("roger")
 
 //stop all
 crontab.StopAll()
 
-crontab.Start("bill")
+crontab.Start("duwey")
 ```
 
 Print the summary
@@ -108,8 +112,8 @@ fmt.Println(crontab.Print())
 Summary
 Key-----Interval-----StartingPoint-----Status
 addie-----hourly-----30-----inactive
-bill-----daily-----0300-----active
-jane-----custom (10s)-----immediately-----inactive
+duwey-----daily-----0300-----active
+roger-----custom (10s)-----immediately-----inactive
 ```
 
 
