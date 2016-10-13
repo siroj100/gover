@@ -252,6 +252,8 @@ func (gt *Gotermin) durationUntilFirst() (time.Duration, error) {
 		timeThen, _ := time.Parse("20060102 1504",
 			fmt.Sprintf("%s %s", timeNow.Format("20060102"), gt.startingPoint))
 
+		timeThen = timeThen.In(gt.timeLocation)
+
 		//add 1 day to timeThen if it's before time now
 		if timeNow.After(timeThen) {
 			timeThen = timeThen.AddDate(0, 0, 1)
