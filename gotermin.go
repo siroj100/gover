@@ -249,26 +249,15 @@ func (gt *Gotermin) durationUntilFirst() (time.Duration, error) {
 			return result, fmt.Errorf("Invalid starting point for daily schedule")
 		}
 
-		//return how many seconds we have to wait
-		currentHours, currentMinutes, currentSeconds := timeNow.Format("15"), timeNow.Format("04"), timeNow.Format("05")
-		curHour, _ := strconv.ParseFloat(currentHours, 64)
-		curMin, _ := strconv.ParseFloat(currentMinutes, 64)
-		curSec, _ := strconv.ParseFloat(currentSeconds, 64)
-		//calculate the total seconds passed
-		totalSec := curHour*60*60 + curMin*60 + curSec
+		timeThen, _ := time.Parse("20060102 1504",
+			fmt.Sprintf("%s %s", timeNow.Format("20060102"), gt.startingPoint))
 
-		//parse the starting point
-		//return error if failed
-		timeDur, err := time.ParseDuration(fmt.Sprintf("%sh%sm", gt.startingPoint[:2], gt.startingPoint[2:]))
-		if err != nil {
-			return result, err
+		//add 1 day to timeThen if it's before time now
+		if timeNow.After(timeThen) {
+			timeThen = timeThen.AddDate(0, 0, 1)
 		}
 
-		//calculate the wait duration in seconds
-		durFloat := math.Abs(totalSec - timeDur.Seconds())
-
-		//parse the duration into time.Duration
-		result, err = time.ParseDuration(fmt.Sprintf("%.0fs", durFloat))
+		result = timeThen.Sub(timeNow)
 	default:
 		//return error if category is not valid
 		return result, fmt.Errorf("Current category is invalid: %s", gt.intervalCategory)
