@@ -249,11 +249,10 @@ func (gt *Gotermin) durationUntilFirst() (time.Duration, error) {
 			return result, fmt.Errorf("Invalid starting point for daily schedule")
 		}
 
-		timeThen, _ := time.Parse("20060102 1504",
-			fmt.Sprintf("%s %s", time.Now().In(gt.timeLocation).Format("20060102"), gt.startingPoint))
-
+		timeThen, _ := time.Parse("20060102", timeNow.Format("20060102"))
+		dur, _ := time.ParseDuration(fmt.Sprintf("%sh%sm", gt.startingPoint[:2], gt.startingPoint[2:]))
 		//add the time difference between server and the selected time location
-		timeThen.Add(calculateTimeDiff(gt.timeLocation))
+		timeThen = timeThen.Add(dur).In(gt.timeLocation).Add(calculateTimeDiff(gt.timeLocation))
 
 		//add 1 day to timeThen if it's before time now
 		if timeNow.After(timeThen) {
