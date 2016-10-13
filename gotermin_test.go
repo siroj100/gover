@@ -157,5 +157,5 @@ func TestCalculateTimeDiff(t *testing.T) {
 	loc, _ := time.LoadLocation("Europe/Berlin")
 	dur := calculateTimeDiff(loc)
 
-	assert.Equal(t, time.Hour*-5, dur)
+	assert.Equal(t, time.Hour*5, dur)
 }

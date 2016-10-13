@@ -292,7 +292,7 @@ func calculateTimeDiff(loc *time.Location) time.Duration {
 	}
 
 	//parse the difference between server and local time
-	result, _ := time.ParseDuration(fmt.Sprintf("%.0fs", localSec-serverSec))
+	result, _ := time.ParseDuration(fmt.Sprintf("%.0fs", serverSec-localSec))
 
 	return result
 }
