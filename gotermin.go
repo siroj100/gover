@@ -250,9 +250,10 @@ func (gt *Gotermin) durationUntilFirst() (time.Duration, error) {
 		}
 
 		timeThen, _ := time.Parse("20060102 1504",
-			fmt.Sprintf("%s %s", timeNow.Format("20060102"), gt.startingPoint))
+			fmt.Sprintf("%s %s", time.Now().In(gt.timeLocation).Format("20060102"), gt.startingPoint))
 
-		timeThen = timeThen.In(gt.timeLocation)
+		//add the time difference between server and the selected time location
+		timeThen.Add(calculateTimeDiff(gt.timeLocation))
 
 		//add 1 day to timeThen if it's before time now
 		if timeNow.After(timeThen) {
@@ -266,4 +267,32 @@ func (gt *Gotermin) durationUntilFirst() (time.Duration, error) {
 	}
 
 	return result, nil
+}
+
+//calculate time difference between selected time location and server local time
+//for example if the server is run in UTC and the selected time is GMT (UTC+7)
+//then this function should yield 7hours
+func calculateTimeDiff(loc *time.Location) time.Duration {
+	serverTime := time.Now().Format("-0700")
+	localTime := time.Now().In(loc).Format("-0700")
+
+	//parse the time zone duration of server and local time
+	serverDur, _ := time.ParseDuration(fmt.Sprintf("%sh%sm", serverTime[1:3], serverTime[3:5]))
+	localDur, _ := time.ParseDuration(fmt.Sprintf("%sh%sm", localTime[1:3], localTime[3:5]))
+
+	//convert both durations into seconds float
+	//however if the sign is "-" multiply it with minus 1
+	serverSec := serverDur.Seconds()
+	if serverTime[:1] == "-" {
+		serverSec = serverSec * -1
+	}
+	localSec := localDur.Seconds()
+	if localTime[:1] == "-" {
+		localSec = localSec * -1
+	}
+
+	//parse the difference between server and local time
+	result, _ := time.ParseDuration(fmt.Sprintf("%.0fs", localSec-serverSec))
+
+	return result
 }

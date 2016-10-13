@@ -152,3 +152,10 @@ func TestCustomInterval(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, sleepTime, initial)
 }
+
+func TestCalculateTimeDiff(t *testing.T) {
+	loc, _ := time.LoadLocation("Europe/Berlin")
+	dur := calculateTimeDiff(loc)
+
+	assert.Equal(t, time.Hour*-5, dur)
+}
