@@ -239,7 +239,13 @@ func (gt *Gotermin) durationUntilFirst() (time.Duration, error) {
 		}
 
 		//now we can calculate the duration in seconds
-		durFloat := math.Abs(totalSec - mins*60)
+		//add an hour if the startingSec is less than totalSec
+		startingSec := mins * 60
+		if startingSec < totalSec {
+			startingSec += 60 * 60
+		}
+
+		durFloat := math.Abs(startingSec - totalSec)
 
 		//parse the duration into time.Duration
 		result, err = time.ParseDuration(fmt.Sprintf("%.0fs", durFloat))
