@@ -206,6 +206,7 @@ func (gt *Gotermin) start(jobInterval, sleepDuration time.Duration) {
 //also check the category, return error if not valid
 func (gt *Gotermin) durationUntilFirst() (time.Duration, error) {
 	var result time.Duration
+	var err error
 
 	//add exception for empty string
 	//that means that we do not need to wait, just do it immediately
@@ -217,61 +218,81 @@ func (gt *Gotermin) durationUntilFirst() (time.Duration, error) {
 	timeNow := time.Now().In(gt.timeLocation)
 	switch gt.intervalCategory {
 	case "hourly":
-		//check whether starting point is minute parseable
-		if _, err := time.Parse("04", gt.startingPoint); err != nil {
-			return result, fmt.Errorf("Invalid starting point for hourly schedule")
-		}
-
-		//this means that we have to wait for 0-59 minutes
-		//to be precise, parse the value in seconds
-		currentMinutes, currentSeconds := timeNow.Format("04"), timeNow.Format("05")
-		//assume that parse float64 should be successful
-		curMin, _ := strconv.ParseFloat(currentMinutes, 64)
-		curSec, _ := strconv.ParseFloat(currentSeconds, 64)
-		//calculate the total seconds passed
-		totalSec := curMin*60 + curSec
-
-		//also parse the starting point
-		//return error if failed
-		mins, err := strconv.ParseFloat(gt.startingPoint, 64)
-		if err != nil {
+		if result, err = gt.calculateHourlyDuration(timeNow); err != nil {
 			return result, err
 		}
-
-		//now we can calculate the duration in seconds
-		//add an hour if the startingSec is less than totalSec
-		startingSec := mins * 60
-		if startingSec < totalSec {
-			startingSec += 60 * 60
-		}
-
-		durFloat := math.Abs(startingSec - totalSec)
-
-		//parse the duration into time.Duration
-		result, err = time.ParseDuration(fmt.Sprintf("%.0fs", durFloat))
 	case "daily":
-		//check whether starting point is into hour parseable
-		if _, err := time.Parse("1504", gt.startingPoint); err != nil {
-			return result, fmt.Errorf("Invalid starting point for daily schedule")
+		if result, err = gt.calculateDailyDuration(timeNow); err != nil {
+			return result, err
 		}
-
-		timeThen, _ := time.Parse("20060102", timeNow.Format("20060102"))
-		dur, _ := time.ParseDuration(fmt.Sprintf("%sh%sm", gt.startingPoint[:2], gt.startingPoint[2:]))
-		//add the time difference between server and the selected time location
-		timeThen = timeThen.Add(dur).In(gt.timeLocation).Add(calculateTimeDiff(gt.timeLocation))
-
-		//add 1 day to timeThen if it's before time now
-		if timeNow.After(timeThen) {
-			timeThen = timeThen.AddDate(0, 0, 1)
-		}
-
-		result = timeThen.Sub(timeNow)
 	default:
 		//return error if category is not valid
 		return result, fmt.Errorf("Current category is invalid: %s", gt.intervalCategory)
 	}
 
 	return result, nil
+}
+
+//functions to calculate the duration for each category
+func (gt *Gotermin) calculateHourlyDuration(timeNow time.Time) (time.Duration, error) {
+	var result time.Duration
+
+	//check whether starting point is minute parseable
+	if _, err := time.Parse("04", gt.startingPoint); err != nil {
+		return result, fmt.Errorf("Invalid starting point for hourly schedule")
+	}
+
+	//add time difference based on location
+	timeNow = timeNow.In(gt.timeLocation).Add(calculateTimeDiff(gt.timeLocation))
+
+	//this means that we have to wait for 0-59 minutes
+	//to be precise, parse the value in seconds
+	currentMinutes, currentSeconds := timeNow.Format("04"), timeNow.Format("05")
+	//assume that parse float64 should be successful
+	curMin, _ := strconv.ParseFloat(currentMinutes, 64)
+	curSec, _ := strconv.ParseFloat(currentSeconds, 64)
+	//calculate the total seconds passed
+	totalSec := curMin*60 + curSec
+
+	//also parse the starting point
+	//return error if failed
+	mins, err := strconv.ParseFloat(gt.startingPoint, 64)
+	if err != nil {
+		return result, err
+	}
+
+	//now we can calculate the duration in seconds
+	//add an hour if the startingSec is less than totalSec
+	startingSec := mins * 60
+	if startingSec < totalSec {
+		startingSec += 60 * 60
+	}
+
+	durFloat := math.Abs(startingSec - totalSec)
+
+	//parse the duration into time.Duration
+	return time.ParseDuration(fmt.Sprintf("%.0fs", durFloat))
+}
+
+func (gt *Gotermin) calculateDailyDuration(timeNow time.Time) (time.Duration, error) {
+	var result time.Duration
+
+	//check whether starting point is into hour parseable
+	if _, err := time.Parse("1504", gt.startingPoint); err != nil {
+		return result, fmt.Errorf("Invalid starting point for daily schedule")
+	}
+
+	timeThen, _ := time.Parse("20060102", timeNow.Format("20060102"))
+	dur, _ := time.ParseDuration(fmt.Sprintf("%sh%sm", gt.startingPoint[:2], gt.startingPoint[2:]))
+	//add the time difference between server and the selected time location
+	timeThen = timeThen.Add(dur).In(gt.timeLocation).Add(calculateTimeDiff(gt.timeLocation))
+
+	//add 1 day to timeThen if it's before time now
+	if timeNow.After(timeThen) {
+		timeThen = timeThen.AddDate(0, 0, 1)
+	}
+
+	return timeThen.Sub(timeNow), nil
 }
 
 //calculate time difference between selected time location and server local time

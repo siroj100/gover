@@ -157,5 +157,42 @@ func TestCalculateTimeDiff(t *testing.T) {
 	loc, _ := time.LoadLocation("Europe/Berlin")
 	dur := calculateTimeDiff(loc)
 
-	assert.Equal(t, time.Hour*5, dur)
+	assert.Equal(t, time.Hour*6, dur)
+}
+
+func TestCalculateHourlyDuration(t *testing.T) {
+	loc, _ := time.LoadLocation("Europe/Berlin")
+	randomFunc := func(ctx context.Context) { fmt.Println("foo") }
+
+	gt, _ := NewHourly(randomFunc, "20", loc)
+	timeNow, _ := time.Parse("2006-01-02 15:04", "2016-05-21 00:30")
+	dur, err := gt.calculateHourlyDuration(timeNow)
+	assert.NoError(t, err)
+	assert.Equal(t, float64(50*60), dur.Seconds())
+
+	timeNow, _ = time.Parse("2006-01-02 15:04", "2016-05-21 00:05")
+	dur, err = gt.calculateHourlyDuration(timeNow)
+	assert.NoError(t, err)
+	assert.Equal(t, float64(15*60), dur.Seconds())
+}
+
+func TestCalculateDailyDuration(t *testing.T) {
+	loc, _ := time.LoadLocation("Europe/Berlin")
+	timeDiff := calculateTimeDiff(loc)
+
+	randomFunc := func(ctx context.Context) { fmt.Println("foo") }
+
+	gt, _ := NewDaily(randomFunc, "1330", loc)
+	timeNow, _ := time.Parse("2006-01-02 15:04", "2016-05-21 10:00")
+	timeNow = timeNow.Add(timeDiff)
+
+	dur, err := gt.calculateDailyDuration(timeNow)
+	assert.NoError(t, err)
+	assert.Equal(t, float64(3.5*3600), dur.Seconds())
+
+	timeNow, _ = time.Parse("2006-01-02 15:04", "2016-05-21 18:00")
+	timeNow = timeNow.Add(timeDiff)
+	dur, err = gt.calculateDailyDuration(timeNow)
+	assert.NoError(t, err)
+	assert.Equal(t, float64(19.5*3600), dur.Seconds())
 }
