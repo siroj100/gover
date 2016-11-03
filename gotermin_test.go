@@ -57,6 +57,39 @@ func TestCreateNewDaily(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestGetWeekDuration(t *testing.T) {
+	dur, err := getWeekDuration("monDaY")
+	assert.NoError(t, err)
+	assert.Equal(t, float64(0), dur.Seconds())
+
+	_, err = getWeekDuration("seniN")
+	assert.Error(t, err)
+
+	dur, err = getWeekDuration("friday")
+	assert.NoError(t, err)
+	assert.Equal(t, float64(4*24*3600), dur.Seconds())
+}
+
+func TestCreateNewWeekly(t *testing.T) {
+	randomFunc := func(ctx context.Context) { fmt.Println("foo") }
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+	_, err := NewWeekly(randomFunc, "Monday 1530", loc)
+	assert.Error(t, err)
+
+	_, err = NewWeekly(randomFunc, "Monday@1530", nil)
+	assert.Error(t, err)
+
+	_, err = NewWeekly(randomFunc, "Mondayz@1504", loc)
+	assert.Error(t, err)
+
+	_, err = NewWeekly(randomFunc, "Monday@1561", loc)
+	assert.Error(t, err)
+
+	gt, err := NewWeekly(randomFunc, "Monday@1530", loc)
+	assert.NoError(t, err)
+	assert.Equal(t, gt.startingPoint, "Monday@1530")
+}
+
 func TestCreateDurationUntilFirstJob(t *testing.T) {
 	job := func(ctx context.Context) {
 		fmt.Println("foo")
@@ -160,9 +193,10 @@ func TestCalculateTimeDiff(t *testing.T) {
 	assert.Equal(t, time.Hour*6, dur)
 }
 
+func randomFunc(ctx context.Context) { fmt.Println("foo") }
+
 func TestCalculateHourlyDuration(t *testing.T) {
 	loc, _ := time.LoadLocation("Europe/Berlin")
-	randomFunc := func(ctx context.Context) { fmt.Println("foo") }
 
 	gt, _ := NewHourly(randomFunc, "20", loc)
 	timeNow, _ := time.Parse("2006-01-02 15:04", "2016-05-21 00:30")
@@ -180,8 +214,6 @@ func TestCalculateDailyDuration(t *testing.T) {
 	loc, _ := time.LoadLocation("Europe/Berlin")
 	timeDiff := calculateTimeDiff(loc)
 
-	randomFunc := func(ctx context.Context) { fmt.Println("foo") }
-
 	gt, _ := NewDaily(randomFunc, "1330", loc)
 	timeNow, _ := time.Parse("2006-01-02 15:04", "2016-05-21 10:00")
 	timeNow = timeNow.Add(timeDiff)
@@ -195,4 +227,24 @@ func TestCalculateDailyDuration(t *testing.T) {
 	dur, err = gt.calculateDailyDuration(timeNow)
 	assert.NoError(t, err)
 	assert.Equal(t, float64(19.5*3600), dur.Seconds())
+}
+
+func TestCalculateWeeklyDuration(t *testing.T) {
+	loc, _ := time.LoadLocation("Europe/Berlin")
+	timeDiff := calculateTimeDiff(loc)
+
+	gt, _ := NewWeekly(randomFunc, "Wednesday@1530", loc)
+	timeNow, _ := time.Parse("2006-01-02 15:04", "2016-11-04 10:00") //Friday
+	timeNow = timeNow.Add(timeDiff)
+
+	dur, err := gt.calculateWeeklyDuration(timeNow)
+	assert.NoError(t, err)
+	assert.Equal(t, float64(5*24*3600+55*360), dur.Seconds())
+
+	timeNow, _ = time.Parse("2006-01-02 15:04", "2016-11-01 10:00") //Tuesday
+	timeNow = timeNow.Add(timeDiff)
+
+	dur, err = gt.calculateWeeklyDuration(timeNow)
+	assert.NoError(t, err)
+	assert.Equal(t, float64(24*3600+55*360), dur.Seconds())
 }

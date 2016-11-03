@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -80,6 +81,75 @@ func NewDaily(job func(context.Context), hour string, loc *time.Location) (*Gote
 		startingPoint:    hour,
 		timeLocation:     loc,
 	}, nil
+}
+
+//this function will schedule the job in weekly interval
+//input weekday is in format of "weekday hour" separated by @ symbol (e.g. "Monday@1530")
+//if input is not valid then an error will be returned
+func NewWeekly(job func(context.Context), weekly string, loc *time.Location) (*Gotermin, error) {
+	//weekly string should contains exactly 2 elements after splitted by @
+	weeklySplitted := strings.Split(weekly, "@")
+	if len(weeklySplitted) != 2 {
+		return nil, fmt.Errorf("Please input correct weekly string in format Weekday@hhmm")
+	}
+
+	//validate the week first
+	if _, err := getWeekDuration(weeklySplitted[0]); err != nil {
+		return nil, err
+	}
+
+	//and then the hour
+	if _, err := time.Parse("1504", weeklySplitted[1]); err != nil {
+		return nil, err
+	}
+
+	//also return error if time location is nil
+	if loc == nil {
+		return nil, fmt.Errorf("Please input a valid time location")
+	}
+
+	return &Gotermin{
+		Job:              job,
+		quit:             make(chan interface{}, 1),
+		intervalCategory: "weekly",
+		startingPoint:    weekly,
+		timeLocation:     loc,
+	}, nil
+}
+
+//function to determine whether a weekday string is valid or not
+//valid one is e.g. "monday" or "mOnDAY" (will be formatted using strings library)
+//also return the number of seconds lapsed (e.g. for monday is 0 and for wednesday is 2 * 24 * 3600s)
+//if not valid then return error
+func getWeekDuration(weekday string) (time.Duration, error) {
+	//format it to become the title case
+	weekdayFormatted := strings.Title(strings.ToLower(weekday))
+
+	var numDay int
+
+	switch weekdayFormatted {
+	case "Monday":
+		numDay = 0
+	case "Tuesday":
+		numDay = 1
+	case "Wednesday":
+		numDay = 2
+	case "Thursday":
+		numDay = 3
+	case "Friday":
+		numDay = 4
+	case "Saturday":
+		numDay = 5
+	case "Sunday":
+		numDay = 6
+	default:
+		//return error if weekday is not a valid one
+		return time.Second * 0, fmt.Errorf("Invalid weekday string: %s", weekday)
+	}
+
+	//parse duration using the number of days
+	totalSec := numDay * 24 * 3600
+	return time.ParseDuration(fmt.Sprintf("%ds", totalSec))
 }
 
 //this function will set the schedule interval at will
@@ -242,8 +312,7 @@ func (gt *Gotermin) calculateHourlyDuration(timeNow time.Time) (time.Duration, e
 		return result, fmt.Errorf("Invalid starting point for hourly schedule")
 	}
 
-	//add time difference based on location
-	timeNow = timeNow.In(gt.timeLocation).Add(calculateTimeDiff(gt.timeLocation))
+	timeNow = timeNow.In(gt.timeLocation)
 
 	//this means that we have to wait for 0-59 minutes
 	//to be precise, parse the value in seconds
@@ -263,6 +332,7 @@ func (gt *Gotermin) calculateHourlyDuration(timeNow time.Time) (time.Duration, e
 
 	//now we can calculate the duration in seconds
 	//add an hour if the startingSec is less than totalSec
+	//also add the time difference
 	startingSec := mins * 60
 	if startingSec < totalSec {
 		startingSec += 60 * 60
@@ -293,6 +363,62 @@ func (gt *Gotermin) calculateDailyDuration(timeNow time.Time) (time.Duration, er
 	}
 
 	return timeThen.Sub(timeNow), nil
+}
+
+func (gt *Gotermin) calculateWeeklyDuration(timeNow time.Time) (time.Duration, error) {
+	var result time.Duration
+
+	//weekly string should contains exactly 2 elements after splitted by @
+	weeklySplitted := strings.Split(gt.startingPoint, "@")
+	if len(weeklySplitted) != 2 {
+		return result, fmt.Errorf("Please input correct weekly string in format Weekday@hhmm")
+	}
+
+	//the idea is to substract the starting point converted in seconds by time now in seconds
+	//monday 00:00 is the starting point
+	//now create variable nowSec as total seconds from time now
+	var nowSec float64
+	wd := timeNow.In(gt.timeLocation).Weekday().String()
+	if wdDur, err := getWeekDuration(wd); err != nil {
+		return result, err
+	} else {
+		nowSec += wdDur.Seconds()
+	}
+
+	//now format the time now into hours and minute to be converted into seconds
+	//it is safe to assume that both of them are into float parseable
+	//add the hours and minutes into nowSec
+	hour, min := timeNow.Format("15"), timeNow.Format("04")
+	curHour, _ := strconv.ParseFloat(hour, 64)
+	curMin, _ := strconv.ParseFloat(min, 64)
+	nowSec += curHour*3600 + curMin*60
+
+	//now convert the starting point into seconds as well
+	var thenSec float64
+	if wdDur, err := getWeekDuration(weeklySplitted[0]); err != nil {
+		return result, err
+	} else {
+		thenSec += wdDur.Seconds()
+	}
+
+	//make sure that the second part is into time parseable in format hhmm
+	if _, err := time.Parse("1504", weeklySplitted[1]); err != nil {
+		return result, err
+	} else {
+		//now it is safe to assume that it is into duration in this manner parseable
+		dur, _ := time.ParseDuration(fmt.Sprintf("%sh%sm", weeklySplitted[1][:2], weeklySplitted[1][2:]))
+		thenSec += dur.Seconds()
+	}
+
+	//also add the time difference
+	thenSec += calculateTimeDiff(gt.timeLocation).Seconds()
+
+	//add 1 week if thenSec is lesser than nowSec
+	if thenSec < nowSec {
+		thenSec += 7 * 24 * 3600
+	}
+
+	return time.ParseDuration(fmt.Sprintf("%.0fs", math.Abs(thenSec-nowSec)))
 }
 
 //calculate time difference between selected time location and server local time
