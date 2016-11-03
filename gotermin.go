@@ -209,6 +209,9 @@ func (gt *Gotermin) Start() error {
 	case "daily":
 		//set the interval into 24 hours
 		jobInterval = time.Hour * 24
+	case "weekly":
+		//set the interval into 7 * 24 hours
+		jobInterval = time.Hour * 24 * 7
 	case "custom":
 		//set the job interval according to custom interval
 		jobInterval = gt.customInterval
@@ -293,6 +296,10 @@ func (gt *Gotermin) durationUntilFirst() (time.Duration, error) {
 		}
 	case "daily":
 		if result, err = gt.calculateDailyDuration(timeNow); err != nil {
+			return result, err
+		}
+	case "weekly":
+		if result, err = gt.calculateWeeklyDuration(timeNow); err != nil {
 			return result, err
 		}
 	default:

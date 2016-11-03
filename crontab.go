@@ -42,6 +42,10 @@ func (ct *CrontabMinE) RegisterNewDaily(key string, job func(context.Context), h
 	return ct.registerNew("daily", key, job, hour)
 }
 
+func (ct *CrontabMinE) RegisterNewWeekly(key string, job func(context.Context), weekly string) error {
+	return ct.registerNew("weekly", key, job, weekly)
+}
+
 func (ct *CrontabMinE) RegisterNewCustomInterval(key string, job func(context.Context), customInterval time.Duration) error {
 	return ct.registerNew("custom", key, job, customInterval)
 }
@@ -70,6 +74,12 @@ func (ct *CrontabMinE) registerNew(cat, key string, job func(context.Context), i
 			return fmt.Errorf("Invalid input type")
 		} else {
 			gotermin, err = NewDaily(job, hour, ct.timeLocation)
+		}
+	case "weekly":
+		if weekly, ok := input.(string); !ok {
+			return fmt.Errorf("Invalid input type")
+		} else {
+			gotermin, err = NewWeekly(job, weekly, ct.timeLocation)
 		}
 	case "custom":
 		if customInterval, ok := input.(time.Duration); !ok {
