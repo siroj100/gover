@@ -144,7 +144,7 @@ func (ct *CrontabMinE) Stop(key string) error {
 }
 
 //return the summary of current crontab
-func (ct CrontabMinE) Print() string {
+func (ct CrontabMinE) String() string {
 	result := fmt.Sprintf(`
 Summary
 Key-----Interval-----StartingPoint-----Status`)

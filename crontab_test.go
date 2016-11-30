@@ -145,7 +145,5 @@ func TestRegisterAndStartNew(t *testing.T) {
 
 	assert.Equal(t, 7, len(crontab.cronjobs))
 
-	summary := crontab.Print()
-	fmt.Println(summary)
-	assert.NotEqual(t, "", summary)
+	fmt.Println(crontab)
 }

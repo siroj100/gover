@@ -107,7 +107,7 @@ crontab.Start("duwey")
 
 Print the summary
 ```
-fmt.Println(crontab.Print())
+fmt.Println(crontab)
 //will print something like this:
 Summary
 Key-----Interval-----StartingPoint-----Status
