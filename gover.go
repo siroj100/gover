@@ -132,7 +132,7 @@ func (g *Gover) runWithTimeout() error {
 		case <-g.Context.Done():
 			//in this case the context is already cancelled
 			//return error immediately and abandon the currently running go routine
-			return fmt.Errorf("Context timeout")
+			return g.Context.Err()
 		case err := <-errorChan:
 			//return whatever error there is in this channel
 			return err
