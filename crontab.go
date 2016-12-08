@@ -147,26 +147,16 @@ func (ct *CrontabMinE) Stop(key string) error {
 func (ct CrontabMinE) String() string {
 	result := fmt.Sprintf(`
 Summary
-Key-----Interval-----StartingPoint-----Status`)
+Key-----[Interval] StartingPoint-----Status`)
 
 	for key, cronjob := range ct.cronjobs {
-		interval := cronjob.intervalCategory
-		if interval == "custom" {
-			interval += fmt.Sprintf(" (%+v)", cronjob.customInterval)
-		}
-
 		isActive := "inactive"
 		if cronjob.isActive {
 			isActive = "active"
 		}
 
-		startingPoint := cronjob.startingPoint
-		if startingPoint == "" {
-			startingPoint = "immediately"
-		}
-
 		result += fmt.Sprintf(`
-%s-----%s-----%s-----%s`, key, interval, startingPoint, isActive)
+%s-----%s-----%s`, key, cronjob.jobInterval, isActive)
 	}
 
 	return result
