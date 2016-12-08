@@ -6,6 +6,13 @@ import (
 	"time"
 )
 
+const (
+	hourlyCat = "hourly"
+	dailyCat  = "daily"
+	weeklyCat = "weekly"
+	customCat = "custom"
+)
+
 //containers for all gotermins
 //can be used as main controller or to retain informations
 type CrontabMinE struct {
@@ -21,7 +28,7 @@ type CrontabMinE struct {
 //return error if time location is empty
 func NewCrontab(loc *time.Location) (*CrontabMinE, error) {
 	if loc == nil {
-		return nil, fmt.Errorf("Please input a valid time location")
+		return nil, TimeLocationError
 	}
 
 	return &CrontabMinE{
@@ -35,25 +42,25 @@ func NewCrontab(loc *time.Location) (*CrontabMinE, error) {
 //only this time use location from crontab
 //return error if failed to create the gotermin
 func (ct *CrontabMinE) RegisterNewHourly(key string, job func(context.Context), minute string) error {
-	return ct.registerNew("hourly", key, job, minute)
+	return ct.registerNew(hourlyCat, key, job, minute)
 }
 
 func (ct *CrontabMinE) RegisterNewDaily(key string, job func(context.Context), hour string) error {
-	return ct.registerNew("daily", key, job, hour)
+	return ct.registerNew(dailyCat, key, job, hour)
 }
 
 func (ct *CrontabMinE) RegisterNewWeekly(key string, job func(context.Context), weekly string) error {
-	return ct.registerNew("weekly", key, job, weekly)
+	return ct.registerNew(weeklyCat, key, job, weekly)
 }
 
 func (ct *CrontabMinE) RegisterNewCustomInterval(key string, job func(context.Context), customInterval time.Duration) error {
-	return ct.registerNew("custom", key, job, customInterval)
+	return ct.registerNew(customCat, key, job, customInterval)
 }
 
 func (ct *CrontabMinE) registerNew(cat, key string, job func(context.Context), input interface{}) error {
 	//return error if duplicate key is found
 	if _, ok := ct.cronjobs[key]; ok {
-		return fmt.Errorf("Duplicate key for %s is found", key)
+		return DuplicateKeyError
 	}
 
 	//create new gotermin, return error if failed to
@@ -62,33 +69,33 @@ func (ct *CrontabMinE) registerNew(cat, key string, job func(context.Context), i
 	var err error
 
 	switch cat {
-	case "hourly":
+	case hourlyCat:
 		if minute, ok := input.(string); !ok {
-			return fmt.Errorf("Invalid input type")
+			return InterfaceTypeError
 		} else {
 			gotermin, err = NewHourly(job, minute, ct.timeLocation)
 
 		}
-	case "daily":
+	case dailyCat:
 		if hour, ok := input.(string); !ok {
-			return fmt.Errorf("Invalid input type")
+			return InterfaceTypeError
 		} else {
 			gotermin, err = NewDaily(job, hour, ct.timeLocation)
 		}
-	case "weekly":
+	case weeklyCat:
 		if weekly, ok := input.(string); !ok {
-			return fmt.Errorf("Invalid input type")
+			return InterfaceTypeError
 		} else {
 			gotermin, err = NewWeekly(job, weekly, ct.timeLocation)
 		}
-	case "custom":
+	case customCat:
 		if customInterval, ok := input.(time.Duration); !ok {
-			return fmt.Errorf("Invalid input type")
+			return InterfaceTypeError
 		} else {
 			gotermin, err = NewCustomInterval(job, customInterval, ct.timeLocation)
 		}
 	default:
-		return fmt.Errorf("Invalid category")
+		return InterfaceTypeError
 	}
 
 	if err != nil {
@@ -118,7 +125,7 @@ func (ct *CrontabMinE) StartAll() error {
 func (ct *CrontabMinE) Start(key string) error {
 	gotermin, found := ct.cronjobs[key]
 	if !found {
-		return fmt.Errorf("Key %s is not found", key)
+		return KeyNotFoundError
 	}
 
 	return gotermin.Start()
@@ -137,7 +144,7 @@ func (ct *CrontabMinE) StopAll() {
 func (ct *CrontabMinE) Stop(key string) error {
 	gotermin, found := ct.cronjobs[key]
 	if !found {
-		return fmt.Errorf("Key %s is not found", key)
+		return KeyNotFoundError
 	}
 
 	return gotermin.Stop()
@@ -160,4 +167,44 @@ Key-----[Interval] StartingPoint-----Status`)
 	}
 
 	return result
+}
+
+//get all active keys from a crontab struct
+func (ct CrontabMinE) GetAllKeys() []string {
+	var result []string
+	for key, _ := range ct.cronjobs {
+		result = append(result, key)
+	}
+	return result
+}
+
+//get only active keys from a crontab struct
+func (ct CrontabMinE) GetActiveKeys() []string {
+	var result []string
+	for key, val := range ct.cronjobs {
+		if val.isActive {
+			result = append(result, key)
+		}
+	}
+	return result
+}
+
+//get only inactive keys from a crontab struct
+func (ct CrontabMinE) GetInactiveKeys() []string {
+	var result []string
+	for key, val := range ct.cronjobs {
+		if !val.isActive {
+			result = append(result, key)
+		}
+	}
+	return result
+}
+
+//get a GoTermin by a key
+//return error if not found
+func (ct CrontabMinE) GetCronjob(key string) (*Gotermin, error) {
+	if gt, ok := ct.cronjobs[key]; ok {
+		return gt, nil
+	}
+	return nil, KeyNotFoundError
 }

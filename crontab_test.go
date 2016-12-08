@@ -145,5 +145,28 @@ func TestRegisterAndStartNew(t *testing.T) {
 
 	assert.Equal(t, 7, len(crontab.cronjobs))
 
+	<-time.After(time.Millisecond * 100)
+
 	fmt.Println(crontab)
+
+	crontab.Start("moritz_age")
+
+	<-time.After(time.Millisecond * 100)
+
+	//test get keys
+	allkeys := crontab.GetAllKeys()
+	assert.Equal(t, 7, len(allkeys))
+
+	activeKeys := crontab.GetActiveKeys()
+	assert.Equal(t, 1, len(activeKeys))
+
+	inactiveKeys := crontab.GetInactiveKeys()
+	assert.Equal(t, 6, len(inactiveKeys))
+
+	_, err = crontab.GetCronjob("foo")
+	assert.Equal(t, KeyNotFoundError, err)
+
+	gt, err := crontab.GetCronjob("moritz_age")
+	assert.NoError(t, err)
+	assert.Equal(t, true, gt.isActive)
 }
