@@ -111,9 +111,9 @@ fmt.Println(crontab)
 //will print something like this:
 Summary
 Key-----Interval-----StartingPoint-----Status
-addie-----hourly-----30-----inactive
-duwey-----daily-----0300-----active
-roger-----custom (10s)-----immediately-----inactive
+addie-----[1h0m0s] 30-----inactive
+duwey-----[24h0m0s] 0300-----active
+roger-----[10s] immediately-----inactive
 ```
 
 
