@@ -6,13 +6,6 @@ import (
 	"time"
 )
 
-const (
-	hourlyCat = "hourly"
-	dailyCat  = "daily"
-	weeklyCat = "weekly"
-	customCat = "custom"
-)
-
 //containers for all gotermins
 //can be used as main controller or to retain informations
 type CrontabMinE struct {
@@ -42,68 +35,66 @@ func NewCrontab(loc *time.Location) (*CrontabMinE, error) {
 //only this time use location from crontab
 //return error if failed to create the gotermin
 func (ct *CrontabMinE) RegisterNewHourly(key string, job func(context.Context), minute string) error {
-	return ct.registerNew(hourlyCat, key, job, minute)
-}
-
-func (ct *CrontabMinE) RegisterNewDaily(key string, job func(context.Context), hour string) error {
-	return ct.registerNew(dailyCat, key, job, hour)
-}
-
-func (ct *CrontabMinE) RegisterNewWeekly(key string, job func(context.Context), weekly string) error {
-	return ct.registerNew(weeklyCat, key, job, weekly)
-}
-
-func (ct *CrontabMinE) RegisterNewCustomInterval(key string, job func(context.Context), customInterval time.Duration) error {
-	return ct.registerNew(customCat, key, job, customInterval)
-}
-
-func (ct *CrontabMinE) registerNew(cat, key string, job func(context.Context), input interface{}) error {
 	//return error if duplicate key is found
 	if _, ok := ct.cronjobs[key]; ok {
 		return DuplicateKeyError
 	}
 
-	//create new gotermin, return error if failed to
-	//switch the category, also return return error if category is invalid
-	var gotermin *Gotermin
-	var err error
-
-	switch cat {
-	case hourlyCat:
-		if minute, ok := input.(string); !ok {
-			return InterfaceTypeError
-		} else {
-			gotermin, err = NewHourly(job, minute, ct.timeLocation)
-
-		}
-	case dailyCat:
-		if hour, ok := input.(string); !ok {
-			return InterfaceTypeError
-		} else {
-			gotermin, err = NewDaily(job, hour, ct.timeLocation)
-		}
-	case weeklyCat:
-		if weekly, ok := input.(string); !ok {
-			return InterfaceTypeError
-		} else {
-			gotermin, err = NewWeekly(job, weekly, ct.timeLocation)
-		}
-	case customCat:
-		if customInterval, ok := input.(time.Duration); !ok {
-			return InterfaceTypeError
-		} else {
-			gotermin, err = NewCustomInterval(job, customInterval, ct.timeLocation)
-		}
-	default:
-		return InterfaceTypeError
-	}
-
-	if err != nil {
+	if gotermin, err := NewHourly(job, minute, ct.timeLocation); err != nil {
 		return err
+	} else {
+		//if there's no error then add the key into crontab
+		ct.cronjobs[key] = gotermin
 	}
 
-	//if there's no error then add the key into crontab
-	ct.cronjobs[key] = gotermin
+	return nil
+}
+
+func (ct *CrontabMinE) RegisterNewDaily(key string, job func(context.Context), hour string) error {
+	//return error if duplicate key is found
+	if _, ok := ct.cronjobs[key]; ok {
+		return DuplicateKeyError
+	}
+
+	if gotermin, err := NewDaily(job, hour, ct.timeLocation); err != nil {
+		return err
+	} else {
+		//if there's no error then add the key into crontab
+		ct.cronjobs[key] = gotermin
+	}
+
+	return nil
+}
+
+func (ct *CrontabMinE) RegisterNewWeekly(key string, job func(context.Context), weekly string) error {
+	//return error if duplicate key is found
+	if _, ok := ct.cronjobs[key]; ok {
+		return DuplicateKeyError
+	}
+
+	if gotermin, err := NewWeekly(job, weekly, ct.timeLocation); err != nil {
+		return err
+	} else {
+		//if there's no error then add the key into crontab
+		ct.cronjobs[key] = gotermin
+	}
+
+	return nil
+}
+
+func (ct *CrontabMinE) RegisterNewCustomInterval(key string, job func(context.Context), customInterval time.Duration) error {
+	//return error if duplicate key is found
+	if _, ok := ct.cronjobs[key]; ok {
+		return DuplicateKeyError
+	}
+
+	if gotermin, err := NewCustomInterval(job, customInterval, ct.timeLocation); err != nil {
+		return err
+	} else {
+		//if there's no error then add the key into crontab
+		ct.cronjobs[key] = gotermin
+	}
+
 	return nil
 }
 
