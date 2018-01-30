@@ -128,7 +128,7 @@ func TestRetryFunctionality(t *testing.T) {
 	gover.JobInterval = "1ns" //this is practically impossible to pass
 	err = gover.Run()
 	assert.Error(t, err)
-	assert.Equal(t, tryNum, gover.MaxRetry)
+	assert.Equal(t, gover.MaxRetry, tryNum-1)
 
 	//now test collision between job interval and the parent context timeout
 	gover, _ = New(time.Second*1000, timeoutFunc)
@@ -138,5 +138,5 @@ func TestRetryFunctionality(t *testing.T) {
 	//previously it returns 4, now it should be less and returns an error
 	err = gover.Run()
 	assert.Error(t, err)
-	assert.Equal(t, 2, tryNum)
+	assert.Equal(t, 1, tryNum)
 }
