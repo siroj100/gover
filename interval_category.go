@@ -138,7 +138,7 @@ func (dj dailyJob) getSleepDuration(startTime time.Time) (time.Duration, error) 
 		return result, StartingPointError
 	}
 
-	timeThen, _ := time.Parse("20060102", startTime.Format("20060102"))
+	timeThen, _ := time.ParseInLocation("20060102", startTime.Format("20060102"), startTime.Location())
 	dur, _ := time.ParseDuration(fmt.Sprintf("%sh%sm", dj.startingPoint[:2], dj.startingPoint[2:]))
 	//add the time difference between server and the selected time location
 	timeThen = timeThen.Add(dur).In(dj.timeLocation).Add(calculateTimeDiff(dj.timeLocation))
